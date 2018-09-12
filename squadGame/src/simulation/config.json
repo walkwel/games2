@@ -5,6 +5,7 @@
 	"maxGems": 30,
     "time": 90,
     "speed":1,
+    "scoreToWin" : 10,
     "playerSize":50,
     "collectiveSize":20,
     "player1StartingPoint":{"x":20, "y":20},
