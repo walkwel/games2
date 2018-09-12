@@ -11,12 +11,27 @@ import Updater from './updater.js';
 import './style.css';
 
 import CodeEditor from './code-editor';
+        
+const defaultPlayer1Data={
+    levelsToWin : 'level1',
+    playMode : 'manual control'
+}
+const defaultPlayer2Data={
+    levelsToWin : 'level1',
+}
 
 export default class App extends Component {
     render() {
+    const { player1Data = defaultPlayer1Data, player2Data = defaultPlayer2Data, time, scoreToWin, onCommit } = this.props;
         return <Loop>
-            <Updater></Updater>
-            <div style={{height: '98vh', width: '50%', float:"left"}}>
+            <Updater 
+                player1Data={player1Data} 
+                player2Data={player2Data} 
+                scoreToWin={scoreToWin}
+                time={time}
+                onCommit={onCommit}
+            />
+            <div style={{height: '95vh', maxHeight : '650px', width: '50%', float:"left"}}>
                 <Stage width={500} height={500}>
                     <Tile></Tile>
                     <Road></Road>
@@ -26,7 +41,7 @@ export default class App extends Component {
                     <Character gameId={0} charId={1} type={'orange-car'}></Character>
                 </Stage>
             </div>
-            <div style={{height: '98vh', width: '50%', float:"left"}}>
+            <div style={{height: '95vh',maxHeight : '650px', width: '50%', float:"left"}}>
                 <Stage width={500} height={500}>
                     <Tile></Tile>
                     <Road></Road>
@@ -36,7 +51,10 @@ export default class App extends Component {
                     <Character gameId={1} charId={1} type={'blue-car'}></Character>
                 </Stage>
             </div>
-            <CodeEditor></CodeEditor>
+            {
+                player1Data.playMode ==='custom code' && <CodeEditor></CodeEditor>
+            }
+            
         </Loop>
     }
 }

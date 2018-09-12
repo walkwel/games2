@@ -6,6 +6,7 @@ class passengerStore {
     constructor() {
         extendObservable(this, {
             time: config.time,
+            scoreToWin : config.scoreToWin,
             prevTime: Date.now(),
             position: [
                 [

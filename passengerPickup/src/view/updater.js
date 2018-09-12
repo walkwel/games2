@@ -27,6 +27,12 @@ class Updater extends Component {
         this.changePlayer2Func = this.changePlayer2Func.bind(this);
         Store.player1Func = level3;
         Store.player2Func = control;
+        Store.mode = 'pause'; // initially pause
+        this.time=this.props.time || config.time;
+        this.gameOver={
+            status : false,
+            message : ''
+        }
         if(this.getURLParameters('player1')){
             var funcName = this.getURLParameters('player1');
             switch(funcName){
@@ -82,11 +88,52 @@ class Updater extends Component {
             }
         }
         this.simulation = new Simulation(config,Store.player1Func,Store.player2Func);
+        this.setDefaults(props);
+    }
+
+    componentWillReceiveProps(nextProps){
+        this.setDefaults(nextProps);
+    }
+    setDefaults=(props)=>{
+        if(props.player1Data){
+            Object.keys(props.player1Data).forEach(key=>{
+                this.changePlayer1Func({
+                    target : {
+                        value : props.player1Data[key]
+                    }
+                })
+            })
+            Object.keys(props.player2Data).forEach(key=>{
+                this.changePlayer2Func({
+                    target : {
+                        value : props.player2Data[key]
+                    }
+                })
+            })
+            this.time=props.time;
+            Store.scoreToWin = props.scoreToWin || config.scoreToWin;
+            this.restartGame();
+        }else{
+            Store.mode = 'pause'
+        }
     }
     loop = () => {
         if(Store.mode == 'play'){
-            if(Store.time<=0){
-                Store.mode = 'pause'
+            this.gameOver = Store.time<=0 ? {
+                status : true,
+                winner : null,
+                message : 'Time Over'
+            } : Store.score[0] >= Store.scoreToWin || Store.score[1] >= Store.scoreToWin ? {
+                status : true,
+                winner : Store.score[0] === Store.score[1] ? 0 : Store.score[1] >= Store.scoreToWin ? 2 : 1,
+                message : Store.score[0] === Store.score[1] ? 'Score is even' : Store.score[1] >= Store.scoreToWin ? 'Player 2 won!!!' : 'Player 1 won!!!'
+            } : {
+                status : false,
+                winner : null,
+                message : 'Keep Playing'
+            };
+            if(this.gameOver.status){
+                Store.mode = 'pause';
             }
             if(Math.abs(Store.prevTime - Date.now())>=1000){
                 Store.time --;
@@ -106,13 +153,14 @@ class Updater extends Component {
             }
         }
         if(Store.needToRestartGame){
-            var el1 = document.getElementById("player1Select");
-            var val1 = el1.options[el1.selectedIndex].value;
-            var el2 = document.getElementById("player2Select");
-            var val2 = el2.options[el2.selectedIndex].value;
-            this.setPlayer(val1,1);
-            this.setPlayer(val2,2);
-            this.restartGame();
+            // var el1 = document.getElementById("player1Select");
+            // var val1 = el1.options[el1.selectedIndex].value;
+            // var el2 = document.getElementById("player2Select");
+            // var val2 = el2.options[el2.selectedIndex].value;
+            // this.setPlayer(val1,1);
+            // this.setPlayer(val2,2);
+            // this.restartGame();
+            this.setDefaults(this.props);
             Store.needToRestartGame = false;
         }
     }
@@ -263,7 +311,13 @@ class Updater extends Component {
         //Store.mode == 'play'?'pause':'play';
     }
     restartGame(){
-        Store.time = config.time;
+        this.gameOver={
+            status : false,
+            winner : null,
+            message : 'Keep Playing'
+        }
+        Store.score=[0,0];
+        Store.time =this.time || config.time;
         this.simulation = new Simulation(config,Store.player1Func,Store.player2Func);
         Store.mode = 'play';
     }
@@ -273,59 +327,65 @@ class Updater extends Component {
     componentWillUnmount() {
         this.context.loop.unsubscribe(this.loopID);
     }
+    submitSolition=()=>{
+        this.props.onCommit({
+            winner : this.gameOver.winner,
+            timeTaken : this.time - Store.time,
+            jsCode : this.props.player1Data.playMode==='custom code' ? Store.player1Func.toString() : ''
+        })
+    }
     render() {
         return (<div>
-            {Store.time<=0&&<div className={"gameEndWindow"} style={{
+            {this.gameOver.status && <div className={"gameEndWindow"} style={{
                 position:'absolute',
                 width:'100%',
                 height:'100vh',
                 background:'green',
-                zIndex:200
+                zIndex:200,
+                top : 0
             }}>
                 <h1 style={{
                     textAlign:'center',
                     marginTop:'40vh',
                     color:'#fff'
-                }}>
-                    {Store.score[0]>Store.score[1]?'Player 1 won!!!':''}
-                    {Store.score[0]<Store.score[1]?'Player 2 won!!!':''}
-                    {Store.score[0]==Store.score[1]?'Score is even!':''}
+                }}> {
+                        this.gameOver.message
+                    }
                 </h1>
-                <button style={{
+                <div style={{
                     margin:'0 auto',
                     display:'block', 
-                    border:'3px solid white', 
+                    textAlign : 'center'
+                }}>
+                <button style={{
+                    border:'2px solid white', 
                     color:'white', 
                     background:'none',
                     padding:'10px 40px',
                     fontWeight:'bold'
-                }} onClick={() => this.restartGame()}>RESTART</button>
+                }}  onClick={() => this.restartGame()}>RESTART</button>
+                <button style={{
+                    border:'2px solid white', 
+                    color:'white', 
+                    background:'none',
+                    padding:'10px 40px',
+                    fontWeight:'bold',
+                    marginLeft : '5px'
+                }} onClick={() => this.submitSolition()}>SUBMIT SOLUTION</button>
+                </div>
             </div>}
-            <p style={{position:'absolute', left:0, top:0, margin:0, zIndex:100}}>
+            <div style={{position:'absolute', left:0, top:'100px', margin:0, zIndex:100}}>
                 Player 1 score: {Store.score[0]}
-                <select id={"player1Select"} value={Store.player1ControlSelected} onChange={this.changePlayer1Func}>
-                    <option value={"custom code"}>Custom code</option>
-                    <option value={"manual control"}>Manual control</option>
-                    <option value={"level1"}>Level 1</option>
-                    <option value={"level2"}>Level 2</option>
-                    <option value={"level3"}>Level 3</option>
-                </select>
-            </p>
-            <p style={{position:'absolute', right:0, top:0, margin:0, zIndex:100}}>
-                <select id={"player2Select"} value={Store.player2ControlSelected} onChange={this.changePlayer2Func}>
-                    <option value={"custom code"}>Custom code</option>
-                    <option value={"manual control"}>Manual control</option>
-                    <option value={"level1"}>Level 1</option>
-                    <option value={"level2"}>Level 2</option>
-                    <option value={"level3"}>Level 3</option>
-                </select>
+            </div>
+            <div style={{position:'absolute', right:0, top:'100px', margin:0, zIndex:100}}>
                 Player 2 score: {Store.score[1]}
-            </p>
-            <p style={{position:'absolute', left:'50%', top:'0', transform:'translate(-50%, -50%)', zIndex:100}}>
+            </div>
+            <div style={{position:'absolute', left:'50%', top:'100PX', transform:'translate(-50%, -50%)', zIndex:100}}>
                 <p style={{margin:0, textAlign:'center'}}>Time left:{Store.time}</p>
+                <p style={{margin:0, textAlign:'center'}}>Score to win:{Store.scoreToWin}</p>
                 <button onClick={() => this.restartGame()}>Restart</button>
                 <button onClick={() => this.pauseResumeGame()}>{Store.mode == 'play' ? 'Pause' : 'Resume'}</button>
-            </p>
+            </div>
         </div>)
     }
 } 
